@@ -19,14 +19,18 @@ def get_virtual_root(root_node):
         root_node['id']
     )
     virtual_root_resp = api.call(path, 'metadata')
-    if virtual_root_resp['count'] == 0:
-        sub_folder = db.get()['config']['sub_folder']
+    names = [n['name'] for n in virtual_root_resp['data']]
+    sub_folder = db.get()['config']['sub_folder']
+    if virtual_root_resp['count'] == 0 and sub_folder not in names:
         return api.call('nodes', 'metadata', 'POST', {
             'name': sub_folder,
             'kind': 'FOLDER',
             'parents': [root_node['id']]
         })
-    return virtual_root_resp['data'][0]
+    else:
+        for node in virtual_root_resp['data']:
+            if node['name'] == sub_folder:
+                return node
 
 
 def build_index():
@@ -187,7 +191,7 @@ def run(argv=sys.argv):
     root = db.get()
     while not api.get_credentials():
         stats.record_action(root, 'Application not authorized')
-        time.sleep(30)
+        time.sleep(5)
 
     while True:
         while 'config' not in root:
