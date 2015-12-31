@@ -21,7 +21,7 @@ def get_virtual_root(root_node):
     virtual_root_resp = api.call(path, 'metadata')
     names = [n['name'] for n in virtual_root_resp['data']]
     sub_folder = db.get()['config']['sub_folder']
-    if virtual_root_resp['count'] == 0 and sub_folder not in names:
+    if virtual_root_resp['count'] == 0 or sub_folder not in names:
         return api.call('nodes', 'metadata', 'POST', {
             'name': sub_folder,
             'kind': 'FOLDER',
