@@ -1,0 +1,6 @@
+data.fs*
+include
+lib
+bin
+config.ini
+pip-selfcheck.json

@@ -1,0 +1,57 @@
+<!doctype html>
+<head>
+  <title>Configure Cloud Drive Sync</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="{{url_for('static', filename='bootstrap.min.css')}}">
+  <link rel="stylesheet" href="{{url_for('static', filename='custom.css')}}">
+</head>
+<body>
+  <div class="container">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav nav-pills pull-right">
+          <li role="presentation"><a href="/">Home</a></li>
+          <li role="presentation" class="active"><a href="/configure">Config</a></li>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Cloud Drive Sync</h3>
+    </div>
+
+    <h1>Configure</h1>
+    {% if success %}
+      <div class="alert alert-success" role="alert">
+        You have successfully updated configuration.
+      </div>
+    {% endif %}
+    {% if error %}
+      <div class="alert alert-danger" role="alert">
+        All fields are required
+      </div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="">Cloud Drive Sub Folder</label>
+        <input type="text" class="form-control" id="" placeholder="Sub folder" required="true"
+               value="{{sub_folder}}" name="sub_folder" />
+        <p class="help-block">You are required to store all clouddrive data into a sub-folder.</p>
+      </div>
+      <div class="form-group">
+        <label for="">Folders</label>
+        <textarea class="form-control" id="" placeholder="Folders"
+                  required="true" name="folders">{{folders|join('\n')}}</textarea>
+        <p class="help-block">List of folders to backup</p>
+      </div>
+      <div class="form-group">
+        <label for="">Excluded Paths</label>
+        <textarea class="form-control" id="" placeholder="Excluded paths"
+                  required="true" name="excluded">{{excluded|join('\n')}}</textarea>
+        <p class="help-block">Full paths or parts of paths to exclude from syncing</p>
+      </div>
+      <input type="submit" value="Save" class="btn btn-primary" />
+    </form>
+  </div>
+</body>

@@ -1,0 +1,56 @@
+<!doctype html>
+<head>
+  <title>Cloud Drive Sync</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="{{url_for('static', filename='bootstrap.min.css')}}">
+  <link rel="stylesheet" href="{{url_for('static', filename='custom.css')}}">
+
+</head>
+<body>
+  <div class="container">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav nav-pills pull-right">
+          <li role="presentation" class="active"><a href="/">Home</a></li>
+          <li role="presentation" ><a href="/configure">Config</a></li>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Cloud Drive Sync</h3>
+    </div>
+
+    {% if what %}
+      <p class="label label-default">{{what}} - {{when}}</p>
+    {% endif %}
+    {% if current_file %}
+      <div class="current-file">
+        <h4>Active: {{current_file.filename}}</h4>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" style="width: {{current_file.percent}}%;">
+            {{current_file['percent']}}%
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {% if errored %}
+
+      <h4>Errored</h4>
+      <ul>
+        {% for error in errored %}
+        <li>{{error}}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <div class="alert alert-success" role="alert">
+      CloudDrive is authenticated
+    </div>
+    {% if configured %}
+      <div class="alert alert-success" role="alert">
+        Cloud Drive Sync is configured
+      </div>
+    {% endif %}
+  </div>
+</body>
