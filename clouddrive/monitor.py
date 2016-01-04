@@ -152,11 +152,20 @@ def sync_folder(_folder, counts):
                     result = overwrite_file(filepath, folder_node, node['id'])
                     counts['uploaded'] += 1
                 else:
+                    if '/Users/nathan/Desktop' in filepath:
+                        import pdb; pdb.set_trace()
                     result = upload_file(filepath, folder_node)
                     counts['uploaded'] += 1
+                    _id = result['info']['nodeId']
                     if result.get('code') == 'NAME_ALREADY_EXISTS':
-                        result = overwrite_file(filepath, folder_node,
-                                                result['info']['nodeId'])
+                        existing = api.call('nodes/' + _id, 'metadata', 'GET')
+                        updated = parse_date(existing['modifiedDate'])
+                        if os.stat(filepath).st_mtime < updated.timestamp():
+                            counts['ignored'] += 1
+                            result = existing
+                        else:
+                            result = overwrite_file(filepath, folder_node,
+                                                    result['info']['nodeId'])
             except:
                 result = {}
             if 'id' not in result:
