@@ -210,6 +210,10 @@ def run(argv=sys.argv):
             metadata['index_last_built'] = time.time()
             build_index()
 
+        # reset errors
+        root['errored'] = []
+        transaction.commit()
+
         stats.record_action(root, 'Syncing files')
         stats.record_stats(root, sync())
 
