@@ -205,7 +205,7 @@ def _run(argv=sys.argv):
         if (time.time() - metadata.get('endpoint_last_retrieved', 0)) > (60 * 60 * 24 * 3):
             api.store_endpoint()
 
-        if (time.time() - metadata.get('index_last_built', 0)) > (60 * 60 * 24 * 5):
+        if (time.time() - metadata.get('index_last_built', 0)) > (60 * 60 * 24 * 10):
             stats.record_action(root, 'Building index')
             metadata['index_last_built'] = time.time()
             build_index()
