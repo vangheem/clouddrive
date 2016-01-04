@@ -152,8 +152,6 @@ def sync_folder(_folder, counts):
                     result = overwrite_file(filepath, folder_node, node['id'])
                     counts['uploaded'] += 1
                 else:
-                    if '/Users/nathan/Desktop' in filepath:
-                        import pdb; pdb.set_trace()
                     result = upload_file(filepath, folder_node)
                     counts['uploaded'] += 1
                     _id = result['info']['nodeId']
