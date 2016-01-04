@@ -187,7 +187,7 @@ def sync():
     return counts
 
 
-def run(argv=sys.argv):
+def _run(argv=sys.argv):
     root = db.get()
     while not api.get_credentials():
         stats.record_action(root, 'Application not authorized')
@@ -223,3 +223,15 @@ def run(argv=sys.argv):
 
         stats.record_action(root, 'Taking a break for 30 minutes...')
         time.sleep(60 * 30)
+
+
+def run(argv=sys.argv):
+    while True:
+        try:
+            _run()
+        except:
+            db.update()
+            root = db.get()
+            root['errored'] = []
+            transaction.commit()
+            time.sleep(60 * 5)
