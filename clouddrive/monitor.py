@@ -215,7 +215,8 @@ def _run(argv=sys.argv):
         if (time.time() - metadata.get('index_last_built', 0)) > (60 * 60 * 24 * 10):
             stats.record_action(root, 'Building index')
             metadata['index_last_built'] = time.time()
-            build_index()
+            # XXX not going to re-build index... not sure it's necessary
+            # build_index()
 
         # reset errors
         root['errored'] = []
