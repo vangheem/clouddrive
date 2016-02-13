@@ -1,18 +1,19 @@
+from BTrees.OOBTree import OOBTree
+from clouddrive import api
+from clouddrive import commands
+from clouddrive import db
+from clouddrive import stats
+from datetime import datetime
+from dateutil.parser import parse as parse_date
+from fnmatch import fnmatch
+from persistent.list import PersistentList
+
 import json
+import mimetypes
 import os
 import sys
 import time
-
-from BTrees.OOBTree import OOBTree
-from clouddrive import api
-from clouddrive import db
-from clouddrive import stats
-import mimetypes
-from persistent.list import PersistentList
 import transaction
-from fnmatch import fnmatch
-from clouddrive import commands
-from datetime import datetime
 
 
 def get_virtual_root(root_node):
@@ -118,6 +119,18 @@ def overwrite_file(filepath, folder_node, _id):
     return result
 
 
+def files_match(filepath, node):
+    node_md5 = node.get('md5')
+    if node_md5 is None:
+        node.get('contentProperties', {}).get('md5')
+    if node_md5 is None:
+        # check against size
+        updated = parse_date(node['modifiedDate'])
+        return os.stat(filepath).st_mtime < updated.timestamp()
+    else:
+        return commands.md5(filepath) == node_md5
+
+
 def sync_folder(_folder, counts):
 
     def _sync_folder(folder):
@@ -144,15 +157,15 @@ def sync_folder(_folder, counts):
                 continue
 
             try:
-                md5 = commands.md5(filepath)
                 if filename in folder_node['children']:
                     node = folder_node['children'][filename]
-                    if node['md5'] == md5:
+                    if files_match(filepath, node):
                         counts['ignored'] += 1
                         continue
                     result = overwrite_file(filepath, folder_node, node['id'])
                     counts['uploaded'] += 1
                 else:
+                    md5 = commands.md5(filepath)
                     # we don't have file in index, check if it is already uploaded first
                     result = api.call('nodes?filters=contentProperties.md5:%s' % md5,
                                       endpoint_type='metadata').json()
