@@ -10,15 +10,16 @@ from clouddrive import stats
 import mimetypes
 from persistent.list import PersistentList
 import transaction
-from dateutil.parser import parse as parse_date
 from fnmatch import fnmatch
+from clouddrive import commands
+from datetime import datetime
 
 
 def get_virtual_root(root_node):
     path = 'nodes?filters=kind:FOLDER AND parents:%s' % (
         root_node['id']
     )
-    virtual_root_resp = api.call(path, 'metadata')
+    virtual_root_resp = api.call(path, 'metadata').json()
     names = [n['name'] for n in virtual_root_resp['data']]
     sub_folder = db.get()['config']['sub_folder']
     if sub_folder not in names:
@@ -26,7 +27,7 @@ def get_virtual_root(root_node):
             'name': sub_folder,
             'kind': 'FOLDER',
             'parents': [root_node['id']]
-        })
+        }).json()
     else:
         for node in virtual_root_resp['data']:
             if node['name'] == sub_folder:
@@ -43,7 +44,7 @@ def build_index():
     def process_folder(folder):
         if 'children' not in folder:
             folder['children'] = OOBTree()
-        result = api.call('nodes/%s/children' % folder['id'], 'metadata')
+        result = api.call('nodes/%s/children' % folder['id'], 'metadata').json()
         if len(result) == 0:
             return
         for node in result['data']:
@@ -74,10 +75,10 @@ def get_folder_node(folder):
                 'name': part,
                 'kind': 'FOLDER',
                 'parents': [current['id']]
-            })
+            }).json()
             if new.get('code') == 'NAME_ALREADY_EXISTS':
                 _id = new['info']['nodeId']
-                new = api.call('nodes/' + _id, 'metadata')
+                new = api.call('nodes/' + _id, 'metadata').json()
             db.update()
             new = OOBTree(new)
             new['children'] = OOBTree()
@@ -101,7 +102,7 @@ def upload_file(filepath, folder_node):
         args={
             'files': [('content', (filename, open(filepath, 'rb'), _type))]
         }
-    )
+    ).json()
     stats.record_filedone()
     return result
 
@@ -112,7 +113,7 @@ def overwrite_file(filepath, folder_node, _id):
     _type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
     result = api.call('nodes/%s/content' % _id, method='PUT', args={
         'files': [('content', (filename, open(filepath, 'rb'), _type))]
-    })
+    }).json()
     stats.record_filedone()
     return result
 
@@ -143,27 +144,38 @@ def sync_folder(_folder, counts):
                 continue
 
             try:
+                md5 = commands.md5(filepath)
                 if filename in folder_node['children']:
                     node = folder_node['children'][filename]
-                    updated = parse_date(node['modifiedDate'])
-                    if os.stat(filepath).st_mtime < updated.timestamp():
+                    if node['md5'] == md5:
                         counts['ignored'] += 1
                         continue
                     result = overwrite_file(filepath, folder_node, node['id'])
                     counts['uploaded'] += 1
                 else:
-                    result = upload_file(filepath, folder_node)
-                    counts['uploaded'] += 1
-                    _id = result['info']['nodeId']
-                    if result.get('code') == 'NAME_ALREADY_EXISTS':
-                        existing = api.call('nodes/' + _id, 'metadata', 'GET')
-                        updated = parse_date(existing['modifiedDate'])
-                        if os.stat(filepath).st_mtime < updated.timestamp():
-                            counts['ignored'] += 1
-                            result = existing
-                        else:
-                            result = overwrite_file(filepath, folder_node,
-                                                    result['info']['nodeId'])
+                    # we don't have file in index, check if it is already uploaded first
+                    result = api.call('nodes?filters=contentProperties.md5:%s' % md5,
+                                      endpoint_type='metadata').json()
+                    found = False
+                    if len(result['data']) > 0:
+                        for node in result['data']:
+                            if node['parents'][0] == folder_node['id']:
+                                result = node
+                                found = True
+                                break
+
+                    if not found:
+                        result = upload_file(filepath, folder_node)
+                        counts['uploaded'] += 1
+                        _id = result['info']['nodeId']
+                        if result.get('code') == 'NAME_ALREADY_EXISTS':
+                            existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
+                            if existing['md5'] == md5:
+                                counts['ignored'] += 1
+                                result = existing
+                            else:
+                                result = overwrite_file(filepath, folder_node,
+                                                        result['info']['nodeId'])
             except:
                 result = {}
             if 'id' not in result:
@@ -194,11 +206,77 @@ def sync():
     return counts
 
 
+def get_deleted_folder(path):
+    dt = datetime.now()
+    folder_path = '/'.join(path.split('/')[:-1])
+    return os.path.join(
+        '/DELETED/%i/%i' % (dt.year, dt.month),
+        folder_path.lstrip('/'))
+
+
+def move_node(old_parent, new_parent, node):
+    db.update()
+    del old_parent['children'][node['name']]
+    if new_parent['id'] not in node['parents']:
+        node['parents'] = [new_parent['id']]
+    if 'children' not in new_parent:
+        new_parent['children'] = OOBTree()
+    new_parent['children'][node['name']] = node
+    transaction.commit()
+
+
+def clean():
+    root = db.get()
+
+    def process(path, node, parent):
+        if node['kind'] == 'FILE':
+            # check if exists
+            if not os.path.exists(path):
+                # XXX move to deleted folder
+                deleted_folder = get_folder_node(get_deleted_folder(path))
+                resp = api.call(
+                    'nodes/%s/children' % deleted_folder['id'], method='POST',
+                    endpoint_type='metadata', body={
+                        'fromParent': parent['id'],
+                        'childId': node['id']}
+                )
+                if resp.status_code == 200:
+                    move_node(parent, deleted_folder, resp.json())
+                elif resp.status_code == 400:
+                    data = resp.json()
+                    if data['code'] == 'INVALID_PARENT':
+                        if data['info']['parentId'] == deleted_folder['id']:
+                            # already moved, now move the node
+                            move_node(parent, deleted_folder, node)
+        else:
+            # go through and process each child
+            if 'children' not in node:
+                return
+            for name, child in node['children'].items():
+                child_path = os.path.join(path, name)
+                process(child_path, child, node)
+
+    process('/', root['index'], None)
+
+
+def initialize_db():
+    root_node = api.get_root_folder()['data'][0]
+    root = db.get()
+    root['root_node'] = root_node
+    virtual_root = get_virtual_root(root_node)
+    index = OOBTree(virtual_root)
+    db.update()
+    root['index'] = index
+
+
 def _run(argv=sys.argv):
     root = db.get()
     while not api.get_credentials():
         stats.record_action(root, 'Application not authorized')
         time.sleep(5)
+
+    if 'index' not in root:
+        initialize_db()
 
     while True:
         while 'config' not in root:
@@ -212,12 +290,6 @@ def _run(argv=sys.argv):
         if (time.time() - metadata.get('endpoint_last_retrieved', 0)) > (60 * 60 * 24 * 3):
             api.store_endpoint()
 
-        if (time.time() - metadata.get('index_last_built', 0)) > (60 * 60 * 24 * 10):
-            stats.record_action(root, 'Building index')
-            metadata['index_last_built'] = time.time()
-            # XXX not going to re-build index... not sure it's necessary
-            # build_index()
-
         # reset errors
         root['errored'] = []
         transaction.commit()
@@ -225,12 +297,15 @@ def _run(argv=sys.argv):
         stats.record_action(root, 'Syncing files')
         stats.record_stats(root, sync())
 
+        stats.record_action(root, 'Cleaning files')
+        stats.record_stats(root, clean())
+
         stats.record_action(root, 'Packing database')
         storage = db.get_storage()
         storage.pack(time.time(), wait=True)
 
-        stats.record_action(root, 'Taking a break for 30 minutes...')
-        time.sleep(60 * 30)
+        stats.record_action(root, 'Taking a break for 10 minutes...')
+        time.sleep(60 * 10)
 
 
 def run(argv=sys.argv):

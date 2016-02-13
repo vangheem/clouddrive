@@ -124,12 +124,12 @@ def call(path, endpoint_type='content', method='GET', body=None,
     if resp.status_code == 401:
         refresh()
         return call(path, endpoint_type, method, body, body_type, args)
-    return resp.json()
+    return resp
 
 
 def list_files():
-    return call('nodes?filters=kind:FOLDER', 'metadata')
+    return call('nodes?filters=kind:FOLDER', 'metadata').json()
 
 
 def get_root_folder():
-    return call('nodes?filters=kind:FOLDER AND isRoot:true', 'metadata')
+    return call('nodes?filters=kind:FOLDER AND isRoot:true', 'metadata').json()
