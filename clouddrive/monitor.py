@@ -251,6 +251,8 @@ def clean():
     root = db.get()
 
     def process(path, node, parent):
+        if 'DELETED' in path:
+            return
         if node['kind'] == 'FILE':
             # check if exists
             if not os.path.exists(path):
