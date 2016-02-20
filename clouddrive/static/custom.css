@@ -79,3 +79,11 @@ body {
 textarea.form-control{
   height: 150px;
 }
+
+h3.status{
+  width: 100%;
+}
+h3.status span{
+  width: 100%;
+  display:block;
+}
