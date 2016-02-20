@@ -20,11 +20,12 @@ def ssl_sendall(self, data, flags=0):
                 "non-zero flags not allowed in calls to sendall() on %s" %
                 self.__class__)
         amount = len(data)
-        done = 0
+        done = count = 0
         start = time.time()
 
         io = BytesIO(data)
         while True:
+            count += 1
 
             # calc current rate
             now = time.time()
@@ -38,7 +39,8 @@ def ssl_sendall(self, data, flags=0):
             if chunk:
                 self.send(chunk)
                 done += len(chunk)
-                stats.record_fileprogress(done, amount)
+                if count % 15 == 0:
+                    stats.record_fileprogress(done, amount)
             else:
                 break
         return amount
