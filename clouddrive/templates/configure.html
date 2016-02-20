@@ -40,6 +40,12 @@
         <p class="help-block">You are required to store all clouddrive data into a sub-folder.</p>
       </div>
       <div class="form-group">
+        <label for="">Update Frequency</label>
+        <input type="text" class="form-control" id="" placeholder="Sub folder" required="true"
+               value="{{update_frequency}}" name="update_frequency" />
+        <p class="help-block">If file changes, how often to update with change(in minutes).</p>
+      </div>
+      <div class="form-group">
         <label for="">Folders</label>
         <textarea class="form-control" id="" placeholder="Folders"
                   required="true" name="folders">{{folders|join('\n')}}</textarea>

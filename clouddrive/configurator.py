@@ -16,7 +16,8 @@ UPLOAD_RATE = int(config.get('config', 'upload_rate'))
 fieldnames = (
     'sub_folder',
     'folders',
-    'excluded')
+    'excluded',
+    'update_frequency')
 list_fields = (
     'folders',
     'excluded')
@@ -76,7 +77,8 @@ _defaults = {
         '*.codeintel',
         '*/parts/*',
         '*/develop-eggs/*'
-    ]
+    ],
+    'update_frequency': 60 * 24
 }
 
 

@@ -137,6 +137,10 @@ def sync_folder(_folder, counts):
         db.update()
         config = db.get()['config']
         excluded = config['excluded']
+        try:
+            update_frequency = int(config.get('update_frequency', 60 * 60 * 24))
+        except:
+            update_frequency = 60 * 60 * 24
         folder_node = get_folder_node(folder)
         transaction.commit()
         for filename in os.listdir(folder):
@@ -160,6 +164,11 @@ def sync_folder(_folder, counts):
                 if filename in folder_node['children']:
                     node = folder_node['children'][filename]
                     if files_match(filepath, node):
+                        counts['ignored'] += 1
+                        continue
+                    update_frequency
+                    updated = parse_date(node['modifiedDate'])
+                    if os.stat(filepath).st_mtime > (updated.timestamp() + update_frequency):
                         counts['ignored'] += 1
                         continue
                     result = overwrite_file(filepath, folder_node, node['id'])
