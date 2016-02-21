@@ -9,6 +9,14 @@ WARNING: This is a pet project I'm doing just for fun to backup files
 on my computer. The docs are not exhaustive and it isn't polished.
 
 
+Requirements
+============
+
+Python 3 with virtualenv installed
+
+https://virtualenv.readthedocs.org/en/latest/
+
+
 Quickstart
 ==========
 
@@ -30,14 +38,10 @@ Finish install::
     make install
     make run
 
-Then open http://127.0.0.1:5000 in your browser and configure. 
+Then open http://127.0.0.1:5000 in your browser and configure.
 
 
 TODO
 ====
 
-- supervisor
-- cleanup old files
-- weekly move old files to different folder
-    - eventually clean old
 - install package
