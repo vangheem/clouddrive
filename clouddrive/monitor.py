@@ -192,7 +192,10 @@ def sync_folder(_folder, counts):
                         _id = result['info']['nodeId']
                         if result.get('code') == 'NAME_ALREADY_EXISTS':
                             existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
-                            if existing['md5'] == md5:
+                            existing_md5 = existing.get('md5')
+                            if existing_md5 is None:
+                                existing_md5 = existing.get('contentProperties', {}).get('md5')
+                            if existing_md5 == md5:
                                 counts['ignored'] += 1
                                 result = existing
                             else:
