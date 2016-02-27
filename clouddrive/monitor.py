@@ -78,7 +78,7 @@ def get_folder_node(folder):
                 'parents': [current['id']]
             }).json()
             if new.get('code') == 'NAME_ALREADY_EXISTS':
-                _id = new['info']['nodeId']
+                _id = _get_id(new)
                 new = api.call('nodes/' + _id, 'metadata').json()
             db.update()
             new = OOBTree(new)
@@ -90,7 +90,7 @@ def get_folder_node(folder):
 
 def upload_file(filepath, folder_node):
     stats.record_filestart(filepath)
-    filename = filepath.split('/')[-1]
+    filename = filepath.split('/')[-1].replace('"', 'quote').replace("'", 'quote')
     _type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
     result = api.call('nodes?suppress=deduplication', method='POST', body={
         'metadata': json.dumps({
@@ -110,9 +110,9 @@ def upload_file(filepath, folder_node):
 
 def overwrite_file(filepath, folder_node, _id):
     stats.record_filestart(filepath)
-    filename = filepath.split('/')[-1]
+    filename = filepath.split('/')[-1].replace('"', 'quote').replace("'", 'quote')
     _type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-    result = api.call('nodes/%s/content' % _id, method='PUT', args={
+    result = api.call('nodes/%s/content?suppress=deduplication' % _id, method='PUT', args={
         'files': [('content', (filename, open(filepath, 'rb'), _type))]
     }).json()
     stats.record_filedone()
@@ -129,6 +129,13 @@ def files_match(filepath, node):
         return os.stat(filepath).st_mtime < updated.timestamp()
     else:
         return commands.md5(filepath) == node_md5
+
+
+def _get_id(node):
+    _id = node.get('id')
+    if _id is None:
+        return node.get('info', {}).get('id')
+    return _id
 
 
 def sync_folder(_folder, counts):
@@ -189,7 +196,7 @@ def sync_folder(_folder, counts):
                     if not found:
                         result = upload_file(filepath, folder_node)
                         counts['uploaded'] += 1
-                        _id = result['info']['nodeId']
+                        _id = _get_id(result)
                         if result.get('code') == 'NAME_ALREADY_EXISTS':
                             existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
                             existing_md5 = existing.get('md5')
@@ -200,10 +207,10 @@ def sync_folder(_folder, counts):
                                 result = existing
                             else:
                                 result = overwrite_file(filepath, folder_node,
-                                                        result['info']['nodeId'])
+                                                        _get_id(result))
             except:
                 result = {}
-            if 'id' not in result:
+            if _get_id(result) is None:
                 root = db.get()
                 if 'errored' not in root:
                     root['errored'] = PersistentList()
@@ -212,7 +219,7 @@ def sync_folder(_folder, counts):
                 counts['errored'] += 1
                 continue
             db.update()
-            folder_node['children'][result['name']] = result
+            folder_node['children'][filename] = result
             transaction.commit()
 
     _sync_folder(_folder)
