@@ -120,9 +120,7 @@ def overwrite_file(filepath, folder_node, _id):
 
 
 def files_match(filepath, node):
-    node_md5 = node.get('md5')
-    if node_md5 is None:
-        node.get('contentProperties', {}).get('md5')
+    node_md5 = _get_md5(node)
     if node_md5 is None:
         # check against size
         updated = parse_date(node['modifiedDate'])
@@ -130,6 +128,12 @@ def files_match(filepath, node):
     else:
         return commands.md5(filepath) == node_md5
 
+
+def _get_md5(node):
+    node_md5 = node.get('md5')
+    if node_md5 is None:
+        return node.get('contentProperties', {}).get('md5')
+    return node_md5
 
 def _get_id(node):
     _id = node.get('id')
@@ -199,10 +203,7 @@ def sync_folder(_folder, counts):
                         _id = _get_id(result)
                         if result.get('code') == 'NAME_ALREADY_EXISTS':
                             existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
-                            existing_md5 = existing.get('md5')
-                            if existing_md5 is None:
-                                existing_md5 = existing.get('contentProperties', {}).get('md5')
-                            if existing_md5 == md5:
+                            if _get_md5(existing) == md5:
                                 counts['ignored'] += 1
                                 result = existing
                             else:
