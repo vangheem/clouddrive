@@ -157,7 +157,6 @@ def _handle_file(folder_node, filepath, filename, update_frequency):
             node = folder_node['children'][filename]
             if files_match(filepath, node):
                 return IGNORED
-            update_frequency
             updated = parse_date(node['modifiedDate'])
             if os.stat(filepath).st_mtime > (updated.timestamp() + update_frequency):
                 return IGNORED
@@ -192,17 +191,17 @@ def _handle_file(folder_node, filepath, filename, update_frequency):
                         return_with = IGNORED
                         result = existing
                     else:
-                        result = overwrite_file(filepath, folder_node,
-                                                _get_id(result))
+                        if _node_processing(existing):
+                            # check if it is processing first. We aren't allowed to update...
+                            result = existing
+                        else:
+                            result = overwrite_file(filepath, folder_node,
+                                                    _get_id(result))
     except:
         result = {}
     if _get_id(result) is None:
         db.update()
         root = db.get()
-        if result.get('code') == 'APP_ID_DOES_NOT_HAVE_ACCESS':
-            stats.record_action(root, 'Possibly a video queued ')
-            time.sleep(30)
-            return _handle_file(filepath, filename)
         if 'errored' not in root:
             root['errored'] = PersistentList()
         root['errored'].append(filepath)
