@@ -134,7 +134,7 @@ def files_match(filepath, node):
 def _get_id(node):
     _id = node.get('id')
     if _id is None:
-        return node.get('info', {}).get('id')
+        return node.get('info', {}).get('nodeId') or node.get('info', {}).get('id')
     return _id
 
 
