@@ -142,6 +142,79 @@ def _get_id(node):
     return _id
 
 
+def _node_processing(node):
+    return node.get('properties', {}).get('CloudDrive', {}).get('Processing') == 'VIDEO_QUEUED'
+
+
+IGNORED = object()
+UPLOADED = object()
+ERRORED = object()
+
+def _handle_file(folder_node, filepath, filename, update_frequency):
+    return_with = None
+    try:
+        if filename in folder_node['children']:
+            node = folder_node['children'][filename]
+            if files_match(filepath, node):
+                return IGNORED
+            update_frequency
+            updated = parse_date(node['modifiedDate'])
+            if os.stat(filepath).st_mtime > (updated.timestamp() + update_frequency):
+                return IGNORED
+            # before we try, check if it was processing, can't do anything on it if it is...
+            if _node_processing(node):
+                existing = api.call('nodes/' + node['id'], 'metadata', 'GET').json()
+                if _node_processing(existing):
+                    # we recheck to see if we can update yet...
+                    return IGNORED
+            result = overwrite_file(filepath, folder_node, node['id'])
+            return_with = UPLOADED
+        else:
+            md5 = commands.md5(filepath)
+            # we don't have file in index, check if it is already uploaded first
+            result = api.call('nodes?filters=contentProperties.md5:%s' % md5,
+                              endpoint_type='metadata').json()
+            found = False
+            if len(result['data']) > 0:
+                for node in result['data']:
+                    if node['parents'][0] == folder_node['id']:
+                        result = node
+                        found = True
+                        break
+
+            if not found:
+                result = upload_file(filepath, folder_node)
+                return_with = UPLOADED
+                _id = _get_id(result)
+                if result.get('code') == 'NAME_ALREADY_EXISTS':
+                    existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
+                    if _get_md5(existing) == md5:
+                        return_with = IGNORED
+                        result = existing
+                    else:
+                        result = overwrite_file(filepath, folder_node,
+                                                _get_id(result))
+    except:
+        result = {}
+    if _get_id(result) is None:
+        db.update()
+        root = db.get()
+        if result.get('code') == 'APP_ID_DOES_NOT_HAVE_ACCESS':
+            stats.record_action(root, 'Possibly a video queued ')
+            time.sleep(30)
+            return _handle_file(filepath, filename)
+        if 'errored' not in root:
+            root['errored'] = PersistentList()
+        root['errored'].append(filepath)
+        root['errored'] = root['errored'][-20:]
+        transaction.commit()
+        return ERRORED
+    db.update()
+    folder_node['children'][filename] = result
+    transaction.commit()
+    return return_with
+
+
 def sync_folder(_folder, counts):
 
     def _sync_folder(folder):
@@ -171,57 +244,13 @@ def sync_folder(_folder, counts):
             if '.' not in filename:
                 continue
 
-            try:
-                if filename in folder_node['children']:
-                    node = folder_node['children'][filename]
-                    if files_match(filepath, node):
-                        counts['ignored'] += 1
-                        continue
-                    update_frequency
-                    updated = parse_date(node['modifiedDate'])
-                    if os.stat(filepath).st_mtime > (updated.timestamp() + update_frequency):
-                        counts['ignored'] += 1
-                        continue
-                    result = overwrite_file(filepath, folder_node, node['id'])
-                    counts['uploaded'] += 1
-                else:
-                    md5 = commands.md5(filepath)
-                    # we don't have file in index, check if it is already uploaded first
-                    result = api.call('nodes?filters=contentProperties.md5:%s' % md5,
-                                      endpoint_type='metadata').json()
-                    found = False
-                    if len(result['data']) > 0:
-                        for node in result['data']:
-                            if node['parents'][0] == folder_node['id']:
-                                result = node
-                                found = True
-                                break
-
-                    if not found:
-                        result = upload_file(filepath, folder_node)
-                        counts['uploaded'] += 1
-                        _id = _get_id(result)
-                        if result.get('code') == 'NAME_ALREADY_EXISTS':
-                            existing = api.call('nodes/' + _id, 'metadata', 'GET').json()
-                            if _get_md5(existing) == md5:
-                                counts['ignored'] += 1
-                                result = existing
-                            else:
-                                result = overwrite_file(filepath, folder_node,
-                                                        _get_id(result))
-            except:
-                result = {}
-            if _get_id(result) is None:
-                root = db.get()
-                if 'errored' not in root:
-                    root['errored'] = PersistentList()
-                root['errored'].append(filepath)
-                root['errored'] = root['errored'][-20:]
+            result = _handle_file(folder_node, filepath, filename, update_frequency)
+            if result == IGNORED:
+                counts['ignored'] += 1
+            elif result == UPLOADED:
+                counts['uploaded'] += 1
+            elif result == ERRORED:
                 counts['errored'] += 1
-                continue
-            db.update()
-            folder_node['children'][filename] = result
-            transaction.commit()
 
     _sync_folder(_folder)
 
