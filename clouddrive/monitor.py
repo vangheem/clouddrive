@@ -65,7 +65,7 @@ def get_folder_node(folder):
     current = root['index']
     for part in folder.split('/')[1:]:
         found = False
-        for node in current['children'].values():
+        for node in current.get('children', {}).values():
             if node['name'] == part:
                 current = node
                 found = True
@@ -83,6 +83,8 @@ def get_folder_node(folder):
             db.update()
             new = OOBTree(new)
             new['children'] = OOBTree()
+            if 'children' not in current:
+                current['children'] = OOBTree()
             current['children'][new['name']] = new
             current = new
     return current
