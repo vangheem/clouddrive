@@ -7,6 +7,7 @@ from datetime import datetime
 from dateutil.parser import parse as parse_date
 from fnmatch import fnmatch
 from persistent.list import PersistentList
+import logging
 
 import json
 import mimetypes
@@ -14,6 +15,9 @@ import os
 import sys
 import time
 import transaction
+
+
+logger = logging.getLogger('clouddrive')
 
 
 def get_virtual_root(root_node):
@@ -200,6 +204,7 @@ def _handle_file(folder_node, filepath, filename, update_frequency):
                             result = overwrite_file(filepath, folder_node,
                                                     _get_id(result))
     except:
+        logger.error('Unknown error uploading file', exc_info=True)
         result = {}
     if _get_id(result) is None:
         db.update()
@@ -363,7 +368,7 @@ def _run(argv=sys.argv):
         stats.record_stats(root, sync())
 
         stats.record_action(root, 'Cleaning files')
-        stats.record_stats(root, clean())
+        clean()
 
         stats.record_action(root, 'Packing database')
         storage = db.get_storage()
@@ -378,6 +383,7 @@ def run(argv=sys.argv):
         try:
             _run()
         except:
+            logger.error('Unknown error running sync', exc_info=True)
             db.update()
             root = db.get()
             root['errored'] = []
