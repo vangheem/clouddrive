@@ -1,4 +1,6 @@
 from clouddrive import db
+import flask as f
+from clouddrive import configurator
 
 
 def get_node(path):
@@ -7,3 +9,9 @@ def get_node(path):
     for part in parts:
         node = node['children'][part]
     return node
+
+
+def get_url(name, path, _external=False):
+    if configurator.SERVER_URL:
+        return configurator.SERVER_URL + '/' + path.lstrip('/')
+    return f.url_for(name, _external=_external)

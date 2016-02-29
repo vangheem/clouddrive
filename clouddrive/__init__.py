@@ -3,6 +3,7 @@ import sys
 from clouddrive import api
 from clouddrive import configurator
 from clouddrive import db
+from clouddrive import utils
 from clouddrive import patches  # noqa
 import flask as f
 import transaction
@@ -15,7 +16,8 @@ app = f.Flask('clouddrive')
 @app.route("/")
 def index():
     if not api.get_credentials():
-        return f.redirect(api.get_login_url(f.url_for('auth_callback', _external=True)))
+        url = utils.get('auth_callback', '/authcallback', True)
+        return f.redirect(api.get_login_url(url))
     root = db.get()
     root._p_jar.sync()
     config = root.get('config', {})
@@ -37,8 +39,10 @@ def auth_callback():
     """
     db.get()._p_jar.sync()
     code = f.request.args.get('code')
-    api.authorize(code, f.url_for('auth_callback', _external=True))
-    return f.redirect(f.url_for('configure_view', _external=True))
+    auth_callback_url = utils.get_url('auth_callback', '/authcallback', True)
+    configure_url = utils.get_url('configure_view', '/configure', True)
+    api.authorize(code, auth_callback_url)
+    return f.redirect(configure_url)
 
 
 @app.route("/configure", methods=['POST', 'GET'])

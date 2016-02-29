@@ -45,3 +45,11 @@ TODO
 ====
 
 - install package
+- customize how long to break between scans
+- browse files(angular 2)
+  - see local vs in backups
+- encrypted backups
+- make compat with windows?
+- desktop top bar icon
+- use thread to process list of files that need updating
+- customize interface and port it runs on
