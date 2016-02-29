@@ -16,7 +16,7 @@ app = f.Flask('clouddrive')
 @app.route("/")
 def index():
     if not api.get_credentials():
-        url = utils.get('auth_callback', '/authcallback', True)
+        url = utils.get_url('auth_callback', '/authcallback', True)
         return f.redirect(api.get_login_url(url))
     root = db.get()
     root._p_jar.sync()
