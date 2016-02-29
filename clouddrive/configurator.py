@@ -12,7 +12,7 @@ config.readfp(open(os.path.join(PACKAGE_DIR, 'config.ini')))
 CLIENT_ID = config.get('config', 'client_id')
 CLIENT_SECRET = config.get('config', 'client_secret')
 UPLOAD_RATE = int(config.get('config', 'upload_rate'))
-SERVER_URL = config.get('server_url', None)
+SERVER_URL = config.get('config', 'server_url')
 
 fieldnames = (
     'sub_folder',
