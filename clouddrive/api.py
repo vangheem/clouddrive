@@ -94,7 +94,7 @@ def call(path, endpoint_type='content', method='GET', body=None,
     metadata = root.get('metadata', {})
     endpoint = metadata.get('endpoint', {})
 
-    if endpoint.get('message') == 'Token has expired':
+    if endpoint.get('message') == 'Token has expired' or metadata == {}:
         refresh()
         store_endpoint()
         root._p_jar.sync()
