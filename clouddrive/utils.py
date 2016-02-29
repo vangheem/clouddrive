@@ -13,5 +13,5 @@ def get_node(path):
 
 def get_url(name, path, _external=False):
     if configurator.SERVER_URL:
-        return configurator.SERVER_URL + '/' + path.lstrip('/')
+        return configurator.SERVER_URL.rstrip('/') + '/' + path.lstrip('/')
     return f.url_for(name, _external=_external)
