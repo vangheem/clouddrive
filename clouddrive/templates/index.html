@@ -11,31 +11,57 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
   <script src="{{url_for('static', filename='moment.js')}}"></script>
   <script>
-$(document).ready(function(){
-
-  var bootstrap = function(){
-    $('.pat-moment').each(function(){
-      $(this).html(moment($(this).html()).fromNow());
-    });
-  };
-
-  var reload = function(){
-    $.ajax({
-      url: '/'
-    }).done(function(html){
-      var $content = $(html).find('.main-content');
-      $('.main-content').replaceWith($content);
-      bootstrap();
-      setTimeout(reload, 3000);
-    });
-  };
-  setTimeout(reload, 3000);
-  bootstrap();
-});
+// $(document).ready(function(){
+//
+//   var bootstrap = function(){
+//     $('.pat-moment').each(function(){
+//       $(this).html(moment($(this).html()).fromNow());
+//     });
+//   };
+//
+//   var reload = function(){
+//     $.ajax({
+//       url: '/'
+//     }).done(function(html){
+//       var $content = $(html).find('.main-content');
+//       $('.main-content').replaceWith($content);
+//       bootstrap();
+//       setTimeout(reload, 3000);
+//     });
+//   };
+//   setTimeout(reload, 3000);
+//   bootstrap();
+// });
   </script>
+
+  <!-- 1. Load libraries -->
+    <!-- IE required polyfills, in this exact order -->
+    <script src="static/node_modules/systemjs/dist/system-polyfills.js"></script>
+    <script src="static/node_modules/es6-shim/es6-shim.min.js"></script>
+
+    <script src="static/node_modules/angular2/bundles/angular2-polyfills.js"></script>
+    <script src="static/node_modules/systemjs/dist/system.src.js"></script>
+    <script src="static/node_modules/rxjs/bundles/Rx.js"></script>
+    <script src="static/node_modules/angular2/bundles/angular2.dev.js"></script>
+    <script src="static/node_modules/angular2/bundles/http.dev.js"></script>
+
+    <!-- 2. Configure SystemJS -->
+    <script>
+      System.config({
+        packages: {
+          'static/app': {
+            format: 'register',
+            defaultExtension: 'js'
+          }
+        }
+      });
+      System.import('static/app/main')
+            .then(null, console.error.bind(console));
+    </script>
 
 </head>
 <body>
+
   <div class="container">
     <div class="header clearfix">
       <nav>
@@ -46,44 +72,5 @@ $(document).ready(function(){
       </nav>
       <h3 class="text-muted">Cloud Drive Sync</h3>
     </div>
-
-    <div class="main-content">
-      {% if what %}
-        <div class="alert alert-info" role="alert">
-          <strong>{{what}}</strong> <span class="pat-moment">{{when}}Z</span>
-        </div>
-      {% endif %}
-      {% if what == 'Syncing files' %}
-        {% if current_file %}
-          <div class="current-file">
-            <h4>Active: {{current_file.filename}}</h4>
-            <div class="progress">
-              <div class="progress-bar" role="progressbar" style="width: {{current_file.percent}}%;">
-                {{current_file['percent']}}%
-              </div>
-            </div>
-          </div>
-        {% endif %}
-      {% endif %}
-
-      {% if errored %}
-
-        <h4>Errored</h4>
-        <ul>
-          {% for error in errored %}
-          <li>{{error}}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </div>
-
-    <div class="alert alert-success" role="alert">
-      CloudDrive is authenticated
-    </div>
-    {% if configured %}
-      <div class="alert alert-success" role="alert">
-        Cloud Drive Sync is configured
-      </div>
-    {% endif %}
-  </div>
+    <entry-app></entry-app>
 </body>

@@ -26,6 +26,7 @@ _defaults = {
     'sub_folder': 'foobar',
     'folders': ['/Users/foobar'],
     'excluded': [
+        '*/clouddrive/*',
         '*/Dropbox/*',
         '*/bin/*',
         '*/Google Drive/*',

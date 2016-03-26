@@ -7,10 +7,11 @@ from clouddrive import utils
 from clouddrive import patches  # noqa
 import flask as f
 import transaction
+from flask import jsonify
 
 
 app = f.Flask('clouddrive')
-# app.debug = True
+app.debug = True
 
 
 @app.route("/")
@@ -30,6 +31,60 @@ def index():
         'index.html', configured=configured, what=what,
         when=when, current_file=current,
         errored=root.get('errored', [])[-20:], **config)
+
+
+@app.route("/status")
+def status():
+    root = db.get()
+    root._p_jar.sync()
+    config = root.get('config', {})
+    configured = configurator.valid(config)
+    action = root.get('action', {})
+    what = action.get('what')
+    when = action.get('when')
+    current = root.get('current_file')
+    return jsonify(
+        configured=configured, what=what,
+        when=when, current_file=current,
+        errored=root.get('errored', [])[-20:], **config)
+
+
+def _export_node(node):
+    data = {}
+    for key, val in node.items():
+        if key == 'children':
+            continue
+        data[key] = val
+    return data
+
+
+@app.route("/browse")
+def browse():
+    root = db.get()
+    root._p_jar.sync()
+    path = f.request.args.get('path')
+    if path == '/':
+        node = db.get()['index']
+    else:
+        node = utils.get_node(path)
+
+    data = _export_node(node)
+    data['children'] = []
+    data['path'] = path
+    if path == '/':
+        path = ''
+    for key, child in node['children'].items():
+        node = _export_node(child)
+        node['path'] = path + '/' + key
+        data['children'].append(node)
+    return jsonify(**data)
+
+
+@app.route("/download")
+def download():
+    _id = f.request.args.get('id')
+    result = api.call('nodes/' + _id, 'metadata', 'GET', body={'tempLink': 'true'}).json()
+    return jsonify(url=result['tempLink'])
 
 
 @app.route("/authcallback")

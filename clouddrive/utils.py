@@ -5,7 +5,9 @@ from clouddrive import configurator
 
 def get_node(path):
     node = db.get()['index']
-    parts = path.rstrip('/').split('/')
+    if path == '/':
+        return node
+    parts = path.strip('/').split('/')
     for part in parts:
         node = node['children'][part]
     return node
