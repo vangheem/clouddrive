@@ -141,6 +141,7 @@ def _get_md5(node):
         return node.get('contentProperties', {}).get('md5')
     return node_md5
 
+
 def _get_id(node):
     _id = node.get('id')
     if _id is None:
@@ -155,6 +156,7 @@ def _node_processing(node):
 IGNORED = object()
 UPLOADED = object()
 ERRORED = object()
+
 
 def _handle_file(folder_node, filepath, filename, update_frequency):
     return_with = None
@@ -295,6 +297,8 @@ def move_node(old_parent, new_parent, node):
 
 def clean():
     root = db.get()
+    config = db.get()['config']
+    folders = config.get('folders', [])
 
     def process(path, node, parent):
         if 'DELETED' in path:
@@ -302,22 +306,29 @@ def clean():
         if node['kind'] == 'FILE':
             # check if exists
             if not os.path.exists(path):
-                # XXX move to deleted folder
-                deleted_folder = get_folder_node(get_deleted_folder(path))
-                resp = api.call(
-                    'nodes/%s/children' % deleted_folder['id'], method='POST',
-                    endpoint_type='metadata', body={
-                        'fromParent': parent['id'],
-                        'childId': node['id']}
-                )
-                if resp.status_code == 200:
-                    move_node(parent, deleted_folder, resp.json())
-                elif resp.status_code == 400:
-                    data = resp.json()
-                    if data['code'] == 'INVALID_PARENT':
-                        if data['info']['parentId'] == deleted_folder['id']:
-                            # already moved, now move the node
-                            move_node(parent, deleted_folder, node)
+                valid = False
+                for folder in folders:
+                    if path.startswith(folder):
+                        valid = os.path.exists(folder)
+                        break
+                # base folder is valid, so it is really missing
+                if valid:
+                    # XXX move to deleted folder
+                    deleted_folder = get_folder_node(get_deleted_folder(path))
+                    resp = api.call(
+                        'nodes/%s/children' % deleted_folder['id'], method='POST',
+                        endpoint_type='metadata', body={
+                            'fromParent': parent['id'],
+                            'childId': node['id']}
+                    )
+                    if resp.status_code == 200:
+                        move_node(parent, deleted_folder, resp.json())
+                    elif resp.status_code == 400:
+                        data = resp.json()
+                        if data['code'] == 'INVALID_PARENT':
+                            if data['info']['parentId'] == deleted_folder['id']:
+                                # already moved, now move the node
+                                move_node(parent, deleted_folder, node)
         else:
             # go through and process each child
             if 'children' not in node:
