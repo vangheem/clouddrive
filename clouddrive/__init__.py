@@ -29,7 +29,7 @@ def index():
     current = root.get('current_file')
     return f.render_template(
         'index.html', configured=configured, what=what,
-        when=when, current_file=current,
+        when=when, current_file=dict(current),
         errored=root.get('errored', [])[-20:], **config)
 
 
